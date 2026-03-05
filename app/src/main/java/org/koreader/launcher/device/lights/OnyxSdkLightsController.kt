@@ -47,9 +47,9 @@ class OnyxSdkLightsController : LightsInterface {
     override fun getBrightness(activity: Activity): Int {
         OnyxDevice.init(activity)
         return when (OnyxDevice.brightnessType) {
-            OnyxBrightnessType.FL -> OnyxDevice.getLightValue(activity, LIGHT_TYPE_FL) ?: 0
-            OnyxBrightnessType.WARM_AND_COLD -> OnyxDevice.getLightValue(activity, LIGHT_TYPE_CTM_COLD) ?: 0
-            OnyxBrightnessType.CTM -> OnyxDevice.getLightValue(activity, LIGHT_TYPE_CTM_BR) ?: 0
+            OnyxBrightnessType.FL -> OnyxDevice.getLightValue(LIGHT_TYPE_FL) ?: 0
+            OnyxBrightnessType.WARM_AND_COLD -> OnyxDevice.getLightValue(LIGHT_TYPE_CTM_COLD) ?: 0
+            OnyxBrightnessType.CTM -> OnyxDevice.getLightValue(LIGHT_TYPE_CTM_BR) ?: 0
             OnyxBrightnessType.NONE -> 0
         }
     }
@@ -57,8 +57,8 @@ class OnyxSdkLightsController : LightsInterface {
     override fun getWarmth(activity: Activity): Int {
         OnyxDevice.init(activity)
         return when (OnyxDevice.brightnessType) {
-            OnyxBrightnessType.WARM_AND_COLD -> OnyxDevice.getLightValue(activity, LIGHT_TYPE_CTM_WARM) ?: 0
-            OnyxBrightnessType.CTM -> OnyxDevice.getLightValue(activity, LIGHT_TYPE_TEMP) ?: 0
+            OnyxBrightnessType.WARM_AND_COLD -> OnyxDevice.getLightValue(LIGHT_TYPE_CTM_WARM) ?: 0
+            OnyxBrightnessType.CTM -> OnyxDevice.getLightValue(LIGHT_TYPE_TEMP) ?: 0
             else -> 0
         }
     }
@@ -217,7 +217,7 @@ object OnyxDevice {
 
     // ── Reads ─────────────────────────────────────────────────────────────────
 
-    fun getLightValue(context: Context, type: Int): Int? = mGetLightValue?.invoke(controller, type) as? Int
+    fun getLightValue(type: Int): Int? = mGetLightValue?.invoke(controller, type) as? Int
     fun getMaxLightValue(type: Int): Int? {
         val max = mGetMaxLightValue?.invoke(controller, type) as? Number
         return if (max == null || max.toInt() == 0) null else max.toInt()
