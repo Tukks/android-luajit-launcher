@@ -4,6 +4,7 @@
 package org.koreader.launcher.device
 
 import android.util.Log
+import org.koreader.launcher.device.epd.CremaEPDController
 import org.koreader.launcher.device.epd.NookEPDController
 import org.koreader.launcher.device.epd.TolinoEPDController
 import org.koreader.launcher.device.epd.RK3026EPDController
@@ -77,7 +78,6 @@ object EPDFactory {
                 }
 
                 DeviceInfo.Id.CREMA,
-                DeviceInfo.Id.CREMA_0660L,
                 DeviceInfo.Id.CREMA_CARTA_G,
                 DeviceInfo.Id.HANVON_960,
                 DeviceInfo.Id.ONYX_JDREAD,
@@ -94,12 +94,19 @@ object EPDFactory {
                     TolinoEPDController()
                 }
 
+                DeviceInfo.Id.CREMA_0660L,
+                -> {
+                    logController("Crema/NTX")
+                    CremaEPDController()
+                }
+
                 DeviceInfo.Id.ONYX_DARWIN5,
                 DeviceInfo.Id.ONYX_DARWIN9,
                 DeviceInfo.Id.ONYX_EDISON,
                 DeviceInfo.Id.ONYX_GALILEO2,
                 DeviceInfo.Id.ONYX_GO_103,
                 DeviceInfo.Id.ONYX_GO6,
+                DeviceInfo.Id.ONYX_GO7,
                 DeviceInfo.Id.ONYX_GO7GEN2,
                 DeviceInfo.Id.ONYX_KON_TIKI2,
                 DeviceInfo.Id.ONYX_LEAF,
