@@ -8,14 +8,13 @@ import java.lang.reflect.Method
 
 // ─── Constants mirroring FrontLightController / BaseBrightnessProvider ────────
 
-private const val LIGHT_TYPE_FL = 1 // FLBrightnessProvider — single channel
-private const val LIGHT_TYPE_CTM_WARM = 2 // WarmBrightnessProvider — warm channel
-private const val LIGHT_TYPE_CTM_COLD = 3 // ColdBrightnessProvider — cold channel
-private const val LIGHT_TYPE_CTM_ALL = 4 // open/close the whole CTM unit
-private const val LIGHT_TYPE_TEMP = 6 // CTMTemperatureProvider — CTM warmth param
-private const val LIGHT_TYPE_CTM_BR = 7 // CTMBrightnessProvider — CTM brightness param
+private const val LIGHT_TYPE_FL = 1
+private const val LIGHT_TYPE_CTM_WARM = 2
+private const val LIGHT_TYPE_CTM_COLD = 3
+private const val LIGHT_TYPE_CTM_ALL = 4
+private const val LIGHT_TYPE_TEMP = 6
+private const val LIGHT_TYPE_CTM_BR = 7
 
-// Mirrors BrightnessType enum
 enum class OnyxBrightnessType { FL, WARM_AND_COLD, CTM, NONE }
 
 // ─── Controller ───────────────────────────────────────────────────────────────
@@ -33,13 +32,11 @@ class OnyxSdkLightsController : LightsInterface {
     override fun needsPermission(): Boolean = false
     override fun hasStandaloneWarmth(): Boolean = false
 
-    override fun hasWarmth(): Boolean {
-        return when (OnyxDevice.brightnessType) {
-            OnyxBrightnessType.WARM_AND_COLD,
-            OnyxBrightnessType.CTM -> true
+    override fun hasWarmth(): Boolean = when (OnyxDevice.brightnessType) {
+        OnyxBrightnessType.WARM_AND_COLD,
+        OnyxBrightnessType.CTM -> true
 
-            else -> !OnyxDevice.isInitialized // optimistic before init
-        }
+        else -> !OnyxDevice.isInitialized // optimistic before init
     }
 
     // ── Read ──────────────────────────────────────────────────────────────────
@@ -68,42 +65,34 @@ class OnyxSdkLightsController : LightsInterface {
     override fun setBrightness(activity: Activity, brightness: Int) {
         OnyxDevice.init(activity)
         val max = getMaxBrightness()
-        if (brightness < MIN || brightness > max) {
+        if (brightness !in MIN..max) {
             Log.w(TAG, "brightness out of range: $brightness (max=$max)")
             return
         }
         Log.v(TAG, "setBrightness=$brightness type=${OnyxDevice.brightnessType}")
-        when (OnyxDevice.brightnessType) {
-            OnyxBrightnessType.FL ->
-                OnyxDevice.setLight(activity, LIGHT_TYPE_FL, brightness)
-
-            OnyxBrightnessType.WARM_AND_COLD ->
-                OnyxDevice.setLight(activity, LIGHT_TYPE_CTM_COLD, brightness)
-
-            OnyxBrightnessType.CTM ->
-                OnyxDevice.setLight(activity, LIGHT_TYPE_CTM_BR, brightness)
-
-            OnyxBrightnessType.NONE -> Unit
+        val lightType = when (OnyxDevice.brightnessType) {
+            OnyxBrightnessType.FL -> LIGHT_TYPE_FL
+            OnyxBrightnessType.WARM_AND_COLD -> LIGHT_TYPE_CTM_COLD
+            OnyxBrightnessType.CTM -> LIGHT_TYPE_CTM_BR
+            OnyxBrightnessType.NONE -> return
         }
+        OnyxDevice.setLight(activity, lightType, brightness)
     }
 
     override fun setWarmth(activity: Activity, warmth: Int) {
         OnyxDevice.init(activity)
         val max = getMaxWarmth()
-        if (warmth < MIN || warmth > max) {
+        if (warmth !in MIN..max) {
             Log.w(TAG, "warmth out of range: $warmth (max=$max)")
             return
         }
         Log.v(TAG, "setWarmth=$warmth type=${OnyxDevice.brightnessType}")
-        when (OnyxDevice.brightnessType) {
-            OnyxBrightnessType.WARM_AND_COLD ->
-                OnyxDevice.setLight(activity, LIGHT_TYPE_CTM_WARM, warmth)
-
-            OnyxBrightnessType.CTM ->
-                OnyxDevice.setLight(activity, LIGHT_TYPE_TEMP, warmth)
-
-            else -> Unit
+        val lightType = when (OnyxDevice.brightnessType) {
+            OnyxBrightnessType.WARM_AND_COLD -> LIGHT_TYPE_CTM_WARM
+            OnyxBrightnessType.CTM -> LIGHT_TYPE_TEMP
+            else -> return
         }
+        OnyxDevice.setLight(activity, lightType, warmth)
     }
 
     // ── Range ─────────────────────────────────────────────────────────────────
@@ -112,25 +101,127 @@ class OnyxSdkLightsController : LightsInterface {
     override fun getMinWarmth(): Int = MIN
 
     override fun getMaxBrightness(): Int = when (OnyxDevice.brightnessType) {
-        OnyxBrightnessType.FL -> OnyxDevice.getMaxLightValue(LIGHT_TYPE_FL) ?: FALLBACK_MAX
-        OnyxBrightnessType.WARM_AND_COLD -> OnyxDevice.getMaxLightValue(LIGHT_TYPE_CTM_COLD) ?: FALLBACK_MAX
-        OnyxBrightnessType.CTM -> OnyxDevice.getMaxLightValue(LIGHT_TYPE_CTM_BR) ?: FALLBACK_MAX
-        OnyxBrightnessType.NONE -> FALLBACK_MAX
-    }
+        OnyxBrightnessType.FL -> OnyxDevice.getMaxLightValue(LIGHT_TYPE_FL)
+        OnyxBrightnessType.WARM_AND_COLD -> OnyxDevice.getMaxLightValue(LIGHT_TYPE_CTM_COLD)
+        OnyxBrightnessType.CTM -> OnyxDevice.getMaxLightValue(LIGHT_TYPE_CTM_BR)
+        OnyxBrightnessType.NONE -> null
+    } ?: FALLBACK_MAX
 
     override fun getMaxWarmth(): Int = when (OnyxDevice.brightnessType) {
-        OnyxBrightnessType.WARM_AND_COLD -> OnyxDevice.getMaxLightValue(LIGHT_TYPE_CTM_WARM) ?: FALLBACK_MAX
-        OnyxBrightnessType.CTM -> OnyxDevice.getMaxLightValue(LIGHT_TYPE_TEMP) ?: FALLBACK_MAX
-        else -> FALLBACK_MAX
-    }
+        OnyxBrightnessType.WARM_AND_COLD -> OnyxDevice.getMaxLightValue(LIGHT_TYPE_CTM_WARM)
+        OnyxBrightnessType.CTM -> OnyxDevice.getMaxLightValue(LIGHT_TYPE_TEMP)
+        else -> null
+    } ?: FALLBACK_MAX
 
     override fun enableFrontlightSwitch(activity: Activity): Int = 1
 }
 
-// ─── Low-level SDK bridge ─────────────────────────────────────────────────────
+// ─── Brightness type detector ─────────────────────────────────────────────────
 
-object OnyxDevice {
+/**
+ * Encapsulates the detection heuristics for which brightness channels this
+ * device supports.  Extracted from OnyxDevice.init() to keep each class focused.
+ *
+ * Priority (mirrors BrightnessController.initProviderMap()):
+ *   checkCTM() / maxCTM > 0  → CTM           (types 6 + 7)
+ *   hasCTMBrightness / maxWarm > 0 → WARM_AND_COLD (types 2 + 3)
+ *   hasFLBrightness            → FL            (type 1)
+ */
+internal object BrightnessDetector {
+
     private const val TAG = "OnyxDevice"
+
+    /**
+     * Returns the detected [OnyxBrightnessType], or `null` when detection
+     * results in [OnyxBrightnessType.NONE] (i.e. nothing was found).
+     */
+    fun detect(
+        context: Context,
+        bridge: OnyxReflectionBridge,
+    ): OnyxBrightnessType {
+        val checkCTM = bridge.checkCTM()
+        val hasFL = bridge.hasFLBrightness(context)
+        val hasCTM = bridge.hasCTMBrightness(context)
+        val maxCTM = bridge.getMaxLightValue(LIGHT_TYPE_TEMP) ?: 0
+        val maxWarm = bridge.getMaxLightValue(LIGHT_TYPE_CTM_WARM) ?: 0
+
+        val type = when {
+            checkCTM || maxCTM > 0 -> OnyxBrightnessType.CTM
+            hasCTM || maxWarm > 0 -> OnyxBrightnessType.WARM_AND_COLD
+            hasFL -> OnyxBrightnessType.FL
+            else -> OnyxBrightnessType.NONE
+        }
+
+        Log.d(
+            TAG,
+            "Detection: checkCTM=$checkCTM hasCTM=$hasCTM hasFL=$hasFL " +
+                "maxCTM=$maxCTM maxWarm=$maxWarm → $type"
+        )
+        return type
+    }
+
+    /**
+     * Returns true when [current] is a preliminary result that warrants
+     * re-running detection (e.g. first call, or device reported no warmth
+     * support yet but that can be state-dependent).
+     */
+    fun shouldRedetect(current: OnyxBrightnessType): Boolean =
+        current == OnyxBrightnessType.NONE || current == OnyxBrightnessType.FL
+}
+
+// ─── Front-light open/close logic ────────────────────────────────────────────
+
+/**
+ * Decides which physical channel to open/close and whether a value-zero write
+ * should close the channel or just zero it.
+ *
+ * Extracted from OnyxDevice.setLight() to keep that function focused on
+ * dispatching rather than policy.
+ */
+internal object FrontLightSwitch {
+
+    /**
+     * Maps a logical [lightType] to the physical channel used for open/close.
+     * CTM brightness and temperature share the master CTM switch (type 4);
+     * all other channels map to themselves.
+     */
+    fun channelFor(lightType: Int): Int = when (lightType) {
+        LIGHT_TYPE_CTM_BR,
+        LIGHT_TYPE_TEMP -> LIGHT_TYPE_CTM_ALL
+
+        else -> lightType
+    }
+
+    /**
+     * Returns true when setting [lightType] to zero should close the front
+     * light, rather than simply writing value 0 to the parameter.
+     *
+     * Warmth parameters (TEMP / CTM_WARM) only control colour balance and
+     * must not turn off the whole panel.
+     */
+    fun shouldCloseOnZero(lightType: Int): Boolean = when (lightType) {
+        LIGHT_TYPE_FL,
+        LIGHT_TYPE_CTM_BR,
+        LIGHT_TYPE_CTM_COLD,
+        LIGHT_TYPE_CTM_WARM -> true
+
+        else -> false
+    }
+}
+
+// ─── Pure reflection bridge ───────────────────────────────────────────────────
+
+/**
+ * Thin wrapper around `android.onyx.hardware.DeviceController` that exposes
+ * only typed Kotlin calls.  Contains no state beyond the cached [Method]
+ * references; all business logic lives in [OnyxDevice], [BrightnessDetector],
+ * and [FrontLightSwitch].
+ */
+internal class OnyxReflectionBridge {
+
+    companion object {
+        private const val TAG = "OnyxDevice"
+    }
 
     private val controller: Class<*>? = try {
         Class.forName("android.onyx.hardware.DeviceController")
@@ -138,36 +229,75 @@ object OnyxDevice {
         Log.w(TAG, "DeviceController not found: $e"); null
     }
 
-    // Integer getLightValue(int type)
-    private val mGetLightValue: Method? = method("getLightValue", Integer.TYPE)
-        ?: method("getLightValues", Integer.TYPE)
+    private val mGetLightValue: Method? =
+        method("getLightValue", Integer.TYPE) ?: method("getLightValues", Integer.TYPE)
 
-    // Integer getMaxLightValue(int type)
-    private val mGetMaxLightValue: Method? = method("getMaxLightValue", Integer.TYPE)
-        ?: method("getMaxLightValues", Integer.TYPE)
+    private val mGetMaxLightValue: Method? =
+        method("getMaxLightValue", Integer.TYPE) ?: method("getMaxLightValues", Integer.TYPE)
 
-    // boolean setLightValue(int type, int value)
-    private val mSetLightValue: Method? = method("setLightValue", Integer.TYPE, Integer.TYPE)
-        ?: method("setLightValues", Integer.TYPE, Integer.TYPE)
+    private val mSetLightValue: Method? =
+        method("setLightValue", Integer.TYPE, Integer.TYPE)
+            ?: method("setLightValues", Integer.TYPE, Integer.TYPE)
 
-    // boolean openFrontLight(int type)
     private val mOpenFrontLight: Method? = method("openFrontLight", Integer.TYPE)
-
-    // boolean closeFrontLight(int type)
     private val mCloseFrontLight: Method? = method("closeFrontLight", Integer.TYPE)
 
-    // boolean isLightOn(int type)
-    private val mIsLightOn: Method? = method("isLightOn", Context::class.java, Integer.TYPE)
-        ?: method("isLightOn", Integer.TYPE)
+    private val mIsLightOn: Method? =
+        method("isLightOn", Context::class.java, Integer.TYPE)
+            ?: method("isLightOn", Integer.TYPE)
 
-    // boolean hasFLBrightness(Context)
     private val mHasFLBrightness: Method? = method("hasFLBrightness", Context::class.java)
-
-    // boolean hasCTMBrightness(Context)
     private val mHasCTMBrightness: Method? = method("hasCTMBrightness", Context::class.java)
-
-    // boolean checkCTM()
     private val mCheckCTM: Method? = method("checkCTM")
+
+    // ── Capability queries ────────────────────────────────────────────────────
+
+    fun checkCTM(): Boolean = mCheckCTM?.invoke(controller) as? Boolean ?: false
+    fun hasFLBrightness(ctx: Context): Boolean = mHasFLBrightness?.invoke(controller, ctx) as? Boolean ?: false
+    fun hasCTMBrightness(ctx: Context): Boolean = mHasCTMBrightness?.invoke(controller, ctx) as? Boolean ?: false
+
+    // ── Reads ─────────────────────────────────────────────────────────────────
+
+    fun getLightValue(type: Int): Int? =
+        mGetLightValue?.invoke(controller, type) as? Int
+
+    fun getMaxLightValue(type: Int): Int? {
+        val v = mGetMaxLightValue?.invoke(controller, type) as? Number
+        return v?.toInt()?.takeIf { it != 0 }
+    }
+
+    fun isLightOn(context: Context, type: Int): Boolean = mIsLightOn?.let { m ->
+        if (m.parameterTypes.size == 2) m.invoke(controller, context, type)
+        else m.invoke(controller, type)
+    } as? Boolean ?: false
+
+    // ── Writes ────────────────────────────────────────────────────────────────
+
+    fun openFrontLight(type: Int): Boolean =
+        mOpenFrontLight?.invoke(controller, type) as? Boolean ?: false
+
+    fun closeFrontLight(type: Int): Boolean =
+        mCloseFrontLight?.invoke(controller, type) as? Boolean ?: false
+
+    fun setLightValue(type: Int, value: Int): Boolean =
+        mSetLightValue?.invoke(controller, type, value) as? Boolean ?: false
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    private fun method(name: String, vararg params: Class<*>): Method? = try {
+        controller?.getMethod(name, *params)
+    } catch (e: Exception) {
+        Log.w(TAG, "Method '$name' not found: $e"); null
+    }
+}
+
+// ─── Stateful device facade ───────────────────────────────────────────────────
+
+object OnyxDevice {
+
+    private const val TAG = "OnyxDevice"
+
+    private val bridge = OnyxReflectionBridge()
 
     var brightnessType: OnyxBrightnessType = OnyxBrightnessType.NONE
         private set
@@ -176,111 +306,66 @@ object OnyxDevice {
         private set
 
     /**
-     * Call once from Activity.onCreate.
-     * Mirrors BrightnessController.initProviderMap() priority order:
-     *   checkCTM()       → CTM           (open/close via type 4, read/write via types 6+7)
-     *   hasCTMBrightness → WARM_AND_COLD (types 2+3)
-     *   hasFLBrightness  → FL            (type 1)
+     * Initialises brightness-type detection.  Re-runs detection if the current
+     * result is considered preliminary (see [BrightnessDetector.shouldRedetect]).
      */
     fun init(context: Context) {
-        // Allow re-initialization if we are currently in a state without warmth,
-        // to handle cases where detection might be state-dependent (like "OFF" vs "Custom" mode).
-        if (isInitialized && brightnessType != OnyxBrightnessType.NONE && brightnessType != OnyxBrightnessType.FL) return
+        if (isInitialized && !BrightnessDetector.shouldRedetect(brightnessType)) return
 
-        val checkCTM = mCheckCTM?.invoke(controller) as? Boolean ?: false
-        val hasFL = mHasFLBrightness?.invoke(controller, context) as? Boolean ?: false
-        val hasCTM = mHasCTMBrightness?.invoke(controller, context) as? Boolean ?: false
-
-        // Check actual hardware channel availability as fallback/confirmation
-        val maxCTM = getMaxLightValue(LIGHT_TYPE_TEMP) ?: 0
-        val maxWarm = getMaxLightValue(LIGHT_TYPE_CTM_WARM) ?: 0
-
-        val oldType = brightnessType
-        brightnessType = when {
-            checkCTM || maxCTM > 0 -> OnyxBrightnessType.CTM
-            hasCTM || maxWarm > 0 -> OnyxBrightnessType.WARM_AND_COLD
-            hasFL -> OnyxBrightnessType.FL
-            else -> OnyxBrightnessType.NONE
+        val detected = BrightnessDetector.detect(context, bridge)
+        if (detected != brightnessType) {
+            brightnessType = detected
         }
-
         if (brightnessType != OnyxBrightnessType.NONE) {
             isInitialized = true
         }
-
-        if (oldType != brightnessType) {
-            Log.d(
-                TAG,
-                "Detection: checkCTM=$checkCTM hasCTM=$hasCTM hasFL=$hasFL maxCTM=$maxCTM maxWarm=$maxWarm → $brightnessType"
-            )
-        }
     }
 
-    // ── Reads ─────────────────────────────────────────────────────────────────
+    // ── Reads (delegated to bridge) ───────────────────────────────────────────
 
-    fun getLightValue(type: Int): Int? = mGetLightValue?.invoke(controller, type) as? Int
-    fun getMaxLightValue(type: Int): Int? {
-        val max = mGetMaxLightValue?.invoke(controller, type) as? Number
-        return if (max == null || max.toInt() == 0) null else max.toInt()
-    }
+    fun getLightValue(type: Int): Int? = bridge.getLightValue(type)
+    fun getMaxLightValue(type: Int): Int? = bridge.getMaxLightValue(type)
 
-    fun isLightOn(context: Context, type: Int): Boolean = mIsLightOn?.let { method ->
-        if (method.parameterTypes.size == 2) {
-            method.invoke(controller, context, type)
-        } else {
-            method.invoke(controller, type)
-        }
-    } as? Boolean ?: false
+    fun isLightOn(context: Context, type: Int): Boolean =
+        bridge.isLightOn(context, type)
 
     // ── Write ─────────────────────────────────────────────────────────────────
 
+    /**
+     * Sets a light [type] to [value], opening or closing the physical channel
+     * as required.  Channel-to-switch mapping and close-on-zero policy are
+     * resolved by [FrontLightSwitch].
+     */
     fun setLight(context: Context, type: Int, value: Int): Boolean {
-        // Map logical parameter type → physical channel type for open/close.
-        // For CTM, type 4 (ALL) controls the master switch.
-        // For WARM_AND_COLD, channels 2 and 3 are independent.
-        val channelType = when (type) {
-            LIGHT_TYPE_CTM_BR,
-            LIGHT_TYPE_TEMP -> LIGHT_TYPE_CTM_ALL // CTM: always open/close the whole unit
-            else -> type // FL / WARM / COLD: direct channel
-        }
+        val channel = FrontLightSwitch.channelFor(type)
 
         return if (value == 0) {
-            // Only close the master switch if it's CTM brightness (7) or FL brightness (1).
-            // Closing warmth channel (2 or 6) shouldn't turn off all lights.
-            val shouldClose = when (type) {
-                LIGHT_TYPE_FL,
-                LIGHT_TYPE_CTM_BR,
-                LIGHT_TYPE_CTM_COLD,
-                LIGHT_TYPE_CTM_WARM -> true
-
-                else -> false
-            }
-
-            if (shouldClose) {
-                val ok = mCloseFrontLight?.invoke(controller, channelType) as? Boolean ?: false
-                Log.v(TAG, "closeFrontLight(channelType=$channelType) → $ok")
-                ok
-            } else {
-                // For warmth, just set value to 0
-                val ok = mSetLightValue?.invoke(controller, type, 0) as? Boolean ?: false
-                Log.v(TAG, "setLightValue(type=$type, value=0) → $ok")
-                ok
-            }
+            setLightOff(type, channel)
         } else {
-            if (!isLightOn(context, channelType)) {
-                val opened = mOpenFrontLight?.invoke(controller, channelType) as? Boolean ?: false
-                Log.v(TAG, "openFrontLight(channelType=$channelType) → $opened")
-            }
-            val ok = mSetLightValue?.invoke(controller, type, value) as? Boolean ?: false
+            ensureLightOn(context, channel)
+            val ok = bridge.setLightValue(type, value)
             Log.v(TAG, "setLightValue(type=$type, value=$value) → $ok")
             ok
         }
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
+    // ── Private helpers ───────────────────────────────────────────────────────
 
-    private fun method(name: String, vararg params: Class<*>): Method? = try {
-        controller?.getMethod(name, *params)
-    } catch (e: Exception) {
-        Log.w(TAG, "Method '$name' not found: $e"); null
+    private fun setLightOff(type: Int, channel: Int): Boolean {
+        if (FrontLightSwitch.shouldCloseOnZero(type)) {
+            bridge.closeFrontLight(channel)
+            Log.v(TAG, "closeFrontLight(channel=$channel)")
+        }
+
+        val ok = bridge.setLightValue(type, 0)
+        Log.v(TAG, "setLightValue(type=$type, value=0) → $ok")
+        return ok
+    }
+
+    private fun ensureLightOn(context: Context, channel: Int) {
+        if (!bridge.isLightOn(context, channel)) {
+            val ok = bridge.openFrontLight(channel)
+            Log.v(TAG, "openFrontLight(channel=$channel) → $ok")
+        }
     }
 }
