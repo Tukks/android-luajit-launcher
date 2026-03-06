@@ -32,12 +32,7 @@ class OnyxSdkLightsController : LightsInterface {
     override fun needsPermission(): Boolean = false
     override fun hasStandaloneWarmth(): Boolean = false
 
-    override fun hasWarmth(): Boolean = when (OnyxDevice.brightnessType) {
-        OnyxBrightnessType.WARM_AND_COLD,
-        OnyxBrightnessType.CTM -> true
-
-        else -> !OnyxDevice.isInitialized // optimistic before init
-    }
+    override fun hasWarmth(): Boolean = true
 
     // ── Read ──────────────────────────────────────────────────────────────────
 
@@ -123,9 +118,9 @@ class OnyxSdkLightsController : LightsInterface {
  * device supports.  Extracted from OnyxDevice.init() to keep each class focused.
  *
  * Priority (mirrors BrightnessController.initProviderMap()):
- *   checkCTM() / maxCTM > 0  → CTM           (types 6 + 7)
+ *   checkCTM() / maxCTM > 0 → CTM (types 6 + 7)
+ *   hasFLBrightness → FL (type 1)
  *   hasCTMBrightness / maxWarm > 0 → WARM_AND_COLD (types 2 + 3)
- *   hasFLBrightness            → FL            (type 1)
  */
 internal object BrightnessDetector {
 
@@ -147,8 +142,8 @@ internal object BrightnessDetector {
 
         val type = when {
             checkCTM || maxCTM > 0 -> OnyxBrightnessType.CTM
-            hasCTM || maxWarm > 0 -> OnyxBrightnessType.WARM_AND_COLD
             hasFL -> OnyxBrightnessType.FL
+            hasCTM || maxWarm > 0 -> OnyxBrightnessType.WARM_AND_COLD
             else -> OnyxBrightnessType.NONE
         }
 
@@ -159,14 +154,6 @@ internal object BrightnessDetector {
         )
         return type
     }
-
-    /**
-     * Returns true when [current] is a preliminary result that warrants
-     * re-running detection (e.g. first call, or device reported no warmth
-     * support yet but that can be state-dependent).
-     */
-    fun shouldRedetect(current: OnyxBrightnessType): Boolean =
-        current == OnyxBrightnessType.NONE || current == OnyxBrightnessType.FL
 }
 
 // ─── Front-light open/close logic ────────────────────────────────────────────
@@ -302,22 +289,13 @@ object OnyxDevice {
     var brightnessType: OnyxBrightnessType = OnyxBrightnessType.NONE
         private set
 
-    var isInitialized = false
-        private set
-
     /**
-     * Initialises brightness-type detection.  Re-runs detection if the current
-     * result is considered preliminary (see [BrightnessDetector.shouldRedetect]).
+     * Initialises brightness-type detection.
      */
     fun init(context: Context) {
-        if (isInitialized && !BrightnessDetector.shouldRedetect(brightnessType)) return
-
         val detected = BrightnessDetector.detect(context, bridge)
         if (detected != brightnessType) {
             brightnessType = detected
-        }
-        if (brightnessType != OnyxBrightnessType.NONE) {
-            isInitialized = true
         }
     }
 
