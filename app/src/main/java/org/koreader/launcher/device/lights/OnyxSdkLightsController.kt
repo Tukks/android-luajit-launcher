@@ -64,7 +64,7 @@ class OnyxSdkLightsController : LightsInterface {
             Log.w(TAG, "brightness out of range: $brightness (max=$max)")
             return
         }
-        Log.v(TAG, "setBrightness=$brightness type=${OnyxDevice.brightnessType}")
+        Log.d(TAG, "setBrightness=$brightness type=${OnyxDevice.brightnessType}")
         val lightType = when (OnyxDevice.brightnessType) {
             OnyxBrightnessType.FL -> LIGHT_TYPE_FL
             OnyxBrightnessType.WARM_AND_COLD -> LIGHT_TYPE_CTM_COLD
@@ -81,7 +81,7 @@ class OnyxSdkLightsController : LightsInterface {
             Log.w(TAG, "warmth out of range: $warmth (max=$max)")
             return
         }
-        Log.v(TAG, "setWarmth=$warmth type=${OnyxDevice.brightnessType}")
+        Log.d(TAG, "setWarmth=$warmth type=${OnyxDevice.brightnessType}")
         val lightType = when (OnyxDevice.brightnessType) {
             OnyxBrightnessType.WARM_AND_COLD -> LIGHT_TYPE_CTM_WARM
             OnyxBrightnessType.CTM -> LIGHT_TYPE_TEMP
@@ -322,7 +322,7 @@ object OnyxDevice {
         } else {
             ensureLightOn(context, channel)
             val ok = bridge.setLightValue(type, value)
-            Log.v(TAG, "setLightValue(type=$type, value=$value) → $ok")
+            Log.d(TAG, "setLightValue(type=$type, value=$value) → $ok")
             ok
         }
     }
@@ -332,18 +332,18 @@ object OnyxDevice {
     private fun setLightOff(type: Int, channel: Int): Boolean {
         if (FrontLightSwitch.shouldCloseOnZero(type)) {
             bridge.closeFrontLight(channel)
-            Log.v(TAG, "closeFrontLight(channel=$channel)")
+            Log.d(TAG, "closeFrontLight(channel=$channel)")
         }
 
         val ok = bridge.setLightValue(type, 0)
-        Log.v(TAG, "setLightValue(type=$type, value=0) → $ok")
+        Log.d(TAG, "setLightValue(type=$type, value=0) → $ok")
         return ok
     }
 
     private fun ensureLightOn(context: Context, channel: Int) {
         if (!bridge.isLightOn(context, channel)) {
             val ok = bridge.openFrontLight(channel)
-            Log.v(TAG, "openFrontLight(channel=$channel) → $ok")
+            Log.d(TAG, "openFrontLight(channel=$channel) → $ok")
         }
     }
 }
